@@ -11,12 +11,12 @@ jobs:
     name: Godot 4.7.1 Android Debug
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     env:
       GODOT_VERSION: 4.7.1
       GODOT_RELEASE: 4.7.1-stable
       GODOT_TEMPLATES_DIR: 4.7.1.stable
       APK_PATH: build/FutureBreaker-debug.apk
-      GODOT_SETTINGS_DIR: /tmp/godot-settings
 
     steps:
       - name: Checkout project
@@ -39,34 +39,77 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.1" "cmdline-tools;latest" "cmake;3.10.2.4988404" "ndk;28.1.13356709"
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.1" \
+            "cmdline-tools;latest" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
 
       - name: Install Godot 4.7.1 and matching export templates
         shell: bash
         run: |
           set -euo pipefail
+
           GODOT_URL="https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
           TEMPLATES_URL="https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz"
-          mkdir -p "${RUNNER_TEMP}/godot" "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATES_DIR}"
-          curl --fail --location --retry 3 "${GODOT_URL}" --output "${RUNNER_TEMP}/godot/godot.zip"
-          curl --fail --location --retry 3 "${TEMPLATES_URL}" --output "${RUNNER_TEMP}/godot/templates.tpz"
-          unzip -q "${RUNNER_TEMP}/godot/godot.zip" -d "${RUNNER_TEMP}/godot/bin"
-          unzip -q "${RUNNER_TEMP}/godot/templates.tpz" -d "${RUNNER_TEMP}/godot/templates"
+
+          mkdir -p \
+            "${RUNNER_TEMP}/godot" \
+            "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATES_DIR}"
+
+          curl --fail --location --retry 3 \
+            "${GODOT_URL}" \
+            --output "${RUNNER_TEMP}/godot/godot.zip"
+
+          curl --fail --location --retry 3 \
+            "${TEMPLATES_URL}" \
+            --output "${RUNNER_TEMP}/godot/templates.tpz"
+
+          unzip -q \
+            "${RUNNER_TEMP}/godot/godot.zip" \
+            -d "${RUNNER_TEMP}/godot/bin"
+
+          unzip -q \
+            "${RUNNER_TEMP}/godot/templates.tpz" \
+            -d "${RUNNER_TEMP}/godot/templates"
+
           GODOT_BINARY="$(find "${RUNNER_TEMP}/godot/bin" -maxdepth 1 -type f -name 'Godot_*' | head -n 1)"
+
           test -n "${GODOT_BINARY}"
           chmod +x "${GODOT_BINARY}"
+
           ln -s "${GODOT_BINARY}" "${RUNNER_TEMP}/godot/godot"
-          cp -R "${RUNNER_TEMP}/godot/templates/templates/." "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATES_DIR}/"
+
+          cp -R \
+            "${RUNNER_TEMP}/godot/templates/templates/." \
+            "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATES_DIR}/"
+
           echo "${RUNNER_TEMP}/godot" >> "${GITHUB_PATH}"
 
       - name: Create temporary debug signing key
         shell: bash
         run: |
           set -euo pipefail
+
           DEBUG_KEYSTORE_PATH="${RUNNER_TEMP}/future-breaker-debug.keystore"
           DEBUG_KEYSTORE_PASSWORD="$(openssl rand -hex 16)"
+
           echo "::add-mask::${DEBUG_KEYSTORE_PASSWORD}"
-          keytool -genkeypair -v -storetype JKS -keystore "${DEBUG_KEYSTORE_PATH}" -storepass "${DEBUG_KEYSTORE_PASSWORD}" -alias androiddebugkey -keypass "${DEBUG_KEYSTORE_PASSWORD}" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Scriptly,C=EC"
+
+          keytool -genkeypair \
+            -v \
+            -storetype JKS \
+            -keystore "${DEBUG_KEYSTORE_PATH}" \
+            -storepass "${DEBUG_KEYSTORE_PASSWORD}" \
+            -alias androiddebugkey \
+            -keypass "${DEBUG_KEYSTORE_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Scriptly,C=EC"
+
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=${DEBUG_KEYSTORE_PATH}" >> "${GITHUB_ENV}"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "${GITHUB_ENV}"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=${DEBUG_KEYSTORE_PASSWORD}" >> "${GITHUB_ENV}"
@@ -75,25 +118,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "${GODOT_SETTINGS_DIR}" build/logs
+
+          mkdir -p "${HOME}/.config/godot" build/logs
+
           python3 - <<'PY'
           import os
           from pathlib import Path
 
-          settings = Path(os.environ["GODOT_SETTINGS_DIR"]) / "editor_settings-4.tres"
+          settings = Path.home() / ".config/godot/editor_settings-4.7.tres"
+
           content = (
               '[gd_resource type="EditorSettings" format=3]\n\n'
               '[resource]\n'
               f'export/android/android_sdk_path = "{os.environ["ANDROID_HOME"]}"\n'
               f'export/android/java_sdk_path = "{os.environ["JAVA_HOME"]}"\n'
           )
+
           settings.write_text(content, encoding="utf-8")
+
+          print(f"Godot editor settings created at: {settings}")
+          print(f"Android SDK: {os.environ['ANDROID_HOME']}")
+          print(f"Java SDK: {os.environ['JAVA_HOME']}")
           PY
 
       - name: Verify installed Godot version
         shell: bash
         run: |
           set -euo pipefail
+
           godot --version | tee build/logs/godot-version.log
           godot --version | grep -F "4.7.1"
 
@@ -102,7 +154,15 @@ jobs:
         run: |
           set -euo pipefail
           set -o pipefail
-          godot --headless --audio-driver Dummy --editor --path . --editor-settings-path "${GODOT_SETTINGS_DIR}" --import 2>&1 | tee build/logs/import.log
+
+          godot \
+            --headless \
+            --audio-driver Dummy \
+            --editor \
+            --path . \
+            --import \
+            2>&1 | tee build/logs/import.log
+
           if grep -E "SCRIPT ERROR|Parse Error|Failed loading resource|Cannot open file" build/logs/import.log; then
             echo "Critical Godot import errors detected."
             exit 1
@@ -113,7 +173,14 @@ jobs:
         run: |
           set -euo pipefail
           set -o pipefail
-          godot --headless --audio-driver Dummy --path . --editor-settings-path "${GODOT_SETTINGS_DIR}" --quit-after 300 2>&1 | tee build/logs/smoke-test.log
+
+          godot \
+            --headless \
+            --audio-driver Dummy \
+            --path . \
+            --quit-after 300 \
+            2>&1 | tee build/logs/smoke-test.log
+
           if grep -E "SCRIPT ERROR|Parse Error|Failed loading resource|Invalid access|Function blocked|flushing queries" build/logs/smoke-test.log; then
             echo "Critical runtime errors detected during smoke test."
             exit 1
@@ -124,6 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           set -o pipefail
+
           mkdir -p build
 
           python3 - <<'PY' 2>&1 | tee build/logs/export-path-validation.log
@@ -135,31 +203,68 @@ jobs:
           configured = os.environ["APK_PATH"]
           preset_file = Path("export_presets.cfg")
 
-          parser = configparser.ConfigParser(interpolation=None, strict=True)
+          parser = configparser.ConfigParser(
+              interpolation=None,
+              strict=True
+          )
+
           parser.read(preset_file, encoding="utf-8")
-          preset_path = parser["preset.0"]["export_path"].strip('"')
-          export_format = parser["preset.0.options"]["gradle_build/export_format"]
+
+          preset_path = (
+              parser["preset.0"]["export_path"]
+              .strip('"')
+          )
+
+          export_format = (
+              parser["preset.0.options"]
+              ["gradle_build/export_format"]
+          )
 
           print(f"Workflow APK path: {configured!r}")
           print(f"Preset APK path:   {preset_path!r}")
-          print(f"UTF-8 bytes:       {configured.encode('utf-8').hex()}")
+          print(
+              "UTF-8 bytes:       "
+              f"{configured.encode('utf-8').hex()}"
+          )
 
           if configured != expected or preset_path != expected:
-              raise SystemExit("Workflow and preset must use exactly build/FutureBreaker-debug.apk")
+              raise SystemExit(
+                  "Workflow and preset must use exactly "
+                  "build/FutureBreaker-debug.apk"
+              )
+
           if PurePosixPath(configured).suffix != ".apk":
-              raise SystemExit("Android output path does not have the literal .apk suffix")
+              raise SystemExit(
+                  "Android output path does not have "
+                  "the literal .apk suffix"
+              )
+
           if export_format != "0":
-              raise SystemExit("Android preset is not configured for APK output (format 0)")
+              raise SystemExit(
+                  "Android preset is not configured "
+                  "for APK output (format 0)"
+              )
           PY
 
-          # Keep the output argument literal and relative to project.godot. This is
-          # the path form documented by Godot and avoids any runner/environment text
-          # being introduced into the value validated by the Android exporter.
-          printf 'Running Godot export with output argument: <%s>\n' 'build/FutureBreaker-debug.apk' | tee build/logs/export-command.log
-          godot --headless --verbose --audio-driver Dummy --path . --editor-settings-path "${GODOT_SETTINGS_DIR}" --export-debug "Android Debug" "build/FutureBreaker-debug.apk" 2>&1 | tee build/logs/android-export.log
+          printf \
+            'Running Godot export with output argument: <%s>\n' \
+            "${APK_PATH}" \
+            | tee build/logs/export-command.log
 
-          test -s "build/FutureBreaker-debug.apk"
-          stat --printf='APK size: %s bytes\n' "build/FutureBreaker-debug.apk" | tee build/logs/apk-size.log
+          godot \
+            --headless \
+            --verbose \
+            --audio-driver Dummy \
+            --path . \
+            --export-debug "Android Debug" "${APK_PATH}" \
+            2>&1 | tee build/logs/android-export.log
+
+          test -s "${APK_PATH}"
+
+          stat \
+            --printf='APK size: %s bytes\n' \
+            "${APK_PATH}" \
+            | tee build/logs/apk-size.log
 
       - name: Upload build logs
         if: always()
