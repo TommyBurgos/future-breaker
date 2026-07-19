@@ -43,12 +43,16 @@ godot --headless --path . --export-debug "Android Debug" build/FutureBreaker-deb
 
 El workflow descarga exactamente Godot 4.7.1 y sus templates, configura JDK 17 y Android SDK, crea una clave debug temporal con una contraseña aleatoria solo durante la ejecución, importa el proyecto, ejecuta una prueba headless y exporta el APK. Si falla, conserva un artifact separado con los logs. La clave y su contraseña no se suben como artifacts ni se guardan en el repositorio.
 
+Antes de exportar, el workflow valida que tanto `APK_PATH` como `export_path` sean exactamente `build/FutureBreaker-debug.apk`, que el sufijo sea literalmente `.apk` y que el preset use el formato Android APK (`gradle_build/export_format=0`). La llamada a Godot utiliza esa ruta relativa literal; de este modo no depende de la expansión de `GITHUB_WORKSPACE`. Los valores, su representación y sus bytes UTF-8 quedan registrados en `export-path-validation.log`.
+
 ## 4. Descargar el artifact
 
 1. Abre la ejecución finalizada desde **Actions**.
 2. Baja hasta **Artifacts**.
 3. Descarga **FutureBreaker-debug-apk**.
 4. Si la compilación falla, descarga **FutureBreaker-android-build-logs** y revisa primero `import.log`, `smoke-test.log` y `android-export.log`.
+
+Para problemas de nombre o extensión revisa también `export-path-validation.log` y `export-command.log`. El aviso de ADB indicando que no puede conectarse a `tcp:5037` es esperable en un runner sin teléfono conectado y no equivale por sí solo a un fallo de exportación.
 
 ## 5. Extraer el APK
 

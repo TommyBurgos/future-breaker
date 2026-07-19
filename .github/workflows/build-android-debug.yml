@@ -22,6 +22,10 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
+      - name: Initialize build logs
+        shell: bash
+        run: mkdir -p build/logs
+
       - name: Configure OpenJDK 17
         uses: actions/setup-java@v4
         with:
@@ -120,21 +124,42 @@ jobs:
         run: |
           set -euo pipefail
           set -o pipefail
+          mkdir -p build
 
-          APK_OUTPUT="${GITHUB_WORKSPACE}/build/FutureBreaker-debug.apk"
-          mkdir -p "${GITHUB_WORKSPACE}/build"
+          python3 - <<'PY' 2>&1 | tee build/logs/export-path-validation.log
+          import configparser
+          import os
+          from pathlib import Path, PurePosixPath
 
-          echo "Exporting APK to: ${APK_OUTPUT}"
+          expected = "build/FutureBreaker-debug.apk"
+          configured = os.environ["APK_PATH"]
+          preset_file = Path("export_presets.cfg")
 
-          godot --headless \
-            --audio-driver Dummy \
-            --path "${GITHUB_WORKSPACE}" \
-            --editor-settings-path "${GODOT_SETTINGS_DIR}" \
-            --export-debug "Android Debug" "${APK_OUTPUT}" \
-            2>&1 | tee build/logs/android-export.log
+          parser = configparser.ConfigParser(interpolation=None, strict=True)
+          parser.read(preset_file, encoding="utf-8")
+          preset_path = parser["preset.0"]["export_path"].strip('"')
+          export_format = parser["preset.0.options"]["gradle_build/export_format"]
 
-          test -s "${APK_OUTPUT}"
-          stat --printf='APK size: %s bytes\n' "${APK_OUTPUT}" | tee build/logs/apk-size.log
+          print(f"Workflow APK path: {configured!r}")
+          print(f"Preset APK path:   {preset_path!r}")
+          print(f"UTF-8 bytes:       {configured.encode('utf-8').hex()}")
+
+          if configured != expected or preset_path != expected:
+              raise SystemExit("Workflow and preset must use exactly build/FutureBreaker-debug.apk")
+          if PurePosixPath(configured).suffix != ".apk":
+              raise SystemExit("Android output path does not have the literal .apk suffix")
+          if export_format != "0":
+              raise SystemExit("Android preset is not configured for APK output (format 0)")
+          PY
+
+          # Keep the output argument literal and relative to project.godot. This is
+          # the path form documented by Godot and avoids any runner/environment text
+          # being introduced into the value validated by the Android exporter.
+          printf 'Running Godot export with output argument: <%s>\n' 'build/FutureBreaker-debug.apk' | tee build/logs/export-command.log
+          godot --headless --verbose --audio-driver Dummy --path . --editor-settings-path "${GODOT_SETTINGS_DIR}" --export-debug "Android Debug" "build/FutureBreaker-debug.apk" 2>&1 | tee build/logs/android-export.log
+
+          test -s "build/FutureBreaker-debug.apk"
+          stat --printf='APK size: %s bytes\n' "build/FutureBreaker-debug.apk" | tee build/logs/apk-size.log
 
       - name: Upload build logs
         if: always()
