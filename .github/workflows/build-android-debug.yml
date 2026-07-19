@@ -120,9 +120,21 @@ jobs:
         run: |
           set -euo pipefail
           set -o pipefail
-          godot --headless --audio-driver Dummy --path . --editor-settings-path "${GODOT_SETTINGS_DIR}" --export-debug "Android Debug" "${APK_PATH}" 2>&1 | tee build/logs/android-export.log
-          test -s "${APK_PATH}"
-          stat --printf='APK size: %s bytes\n' "${APK_PATH}" | tee build/logs/apk-size.log
+
+          APK_OUTPUT="${GITHUB_WORKSPACE}/build/FutureBreaker-debug.apk"
+          mkdir -p "${GITHUB_WORKSPACE}/build"
+
+          echo "Exporting APK to: ${APK_OUTPUT}"
+
+          godot --headless \
+            --audio-driver Dummy \
+            --path "${GITHUB_WORKSPACE}" \
+            --editor-settings-path "${GODOT_SETTINGS_DIR}" \
+            --export-debug "Android Debug" "${APK_OUTPUT}" \
+            2>&1 | tee build/logs/android-export.log
+
+          test -s "${APK_OUTPUT}"
+          stat --printf='APK size: %s bytes\n' "${APK_OUTPUT}" | tee build/logs/apk-size.log
 
       - name: Upload build logs
         if: always()
