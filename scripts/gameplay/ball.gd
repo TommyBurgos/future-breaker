@@ -32,7 +32,6 @@ func set_speed_multiplier(multiplier: float) -> void:
 func _physics_process(delta: float) -> void:
 	if attached:
 		if is_instance_valid(paddle): global_position = paddle.global_position + Vector2(0, -52)
-		if Input.is_action_just_pressed("launch_ball"): launch()
 		_update_trail()
 		return
 	var collision := move_and_collide(direction * speed * delta)

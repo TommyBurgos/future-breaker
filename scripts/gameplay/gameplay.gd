@@ -22,6 +22,7 @@ const BACKGROUND_LEVEL_6 := preload("res://assets/textures/backgrounds/img_nvl6.
 const GRID_VERTICAL_SPACING := 72.0
 const BLOCK_HALF_HEIGHT := 27.0
 const DESCENT_INTERVAL := 7.5
+const TOUCH_DRAG_THRESHOLD := 28.0
 @export var danger_line_y := 1540.0
 @export var danger_warning_rows := 2
 @export var descent_tween_duration := 0.32
@@ -36,6 +37,9 @@ var rng := RandomNumberGenerator.new()
 var descent_elapsed := 0.0
 var blocks_descending := false
 var danger_handling := false
+var launch_touch_index := -1
+var launch_touch_origin := Vector2.ZERO
+var launch_touch_dragged := false
 
 func _ready() -> void:
 	# Every gameplay scene owns its balls; never carry counters across scenes.
@@ -54,6 +58,69 @@ func _ready() -> void:
 	SignalBus.game_lost.connect(_show_loss)
 	SignalBus.ball_speed_multiplier_changed.connect(_on_ball_speed_multiplier_changed)
 	_build_level(); _spawn_ball(true); _bind_hud()
+	_refresh_launch_prompt()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		_handle_launch_touch(event)
+		return
+	if event is InputEventScreenDrag:
+		_handle_launch_drag(event)
+		return
+	# Touch-generated mouse presses arrive while the touch sequence is active.
+	# Ignoring them prevents one physical touch from taking both input paths.
+	if event is InputEventMouseButton:
+		if event.device != InputEvent.DEVICE_ID_EMULATION and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and launch_touch_index < 0:
+			_try_launch_waiting_ball()
+		return
+	if event is InputEventKey and event.is_action_pressed("launch_ball", false):
+		_try_launch_waiting_ball()
+
+func _handle_launch_touch(event: InputEventScreenTouch) -> void:
+	if event.pressed:
+		if launch_touch_index < 0 and _can_launch_waiting_ball():
+			launch_touch_index = event.index
+			launch_touch_origin = event.position
+			launch_touch_dragged = false
+		return
+	if event.index != launch_touch_index:
+		return
+	var was_tap := not launch_touch_dragged and event.position.distance_to(launch_touch_origin) <= TOUCH_DRAG_THRESHOLD
+	_reset_launch_touch()
+	if was_tap:
+		_try_launch_waiting_ball()
+
+func _handle_launch_drag(event: InputEventScreenDrag) -> void:
+	if event.index == launch_touch_index and event.position.distance_to(launch_touch_origin) > TOUCH_DRAG_THRESHOLD:
+		launch_touch_dragged = true
+
+func _reset_launch_touch() -> void:
+	launch_touch_index = -1
+	launch_touch_origin = Vector2.ZERO
+	launch_touch_dragged = false
+
+func _can_launch_waiting_ball() -> bool:
+	if get_tree().paused or GameStateManager.ended or not GameStateManager.gameplay_active:
+		return false
+	if danger_handling or GameStateManager.launched_ball_count > 0:
+		return false
+	for child: Node in balls.get_children():
+		if child is EnergyBall and is_instance_valid(child) and child.attached and child.visible:
+			return true
+	return false
+
+func _try_launch_waiting_ball() -> void:
+	if not _can_launch_waiting_ball():
+		return
+	for child: Node in balls.get_children():
+		if child is EnergyBall and is_instance_valid(child) and child.attached and child.visible:
+			child.launch()
+			return
+
+func _refresh_launch_prompt() -> void:
+	var prompt := $HUD/LaunchPrompt as Label
+	prompt.text = "TOCA PARA LANZAR" if OS.has_feature("mobile") else "PRESIONA ESPACIO O HAZ CLIC PARA LANZAR"
+	prompt.visible = _can_launch_waiting_ball()
 
 func _apply_level_background(level_number: int) -> void:
 	var background_texture: Texture2D
@@ -144,6 +211,7 @@ func _handle_danger_limit() -> void:
 	danger_handling = false
 
 func _clear_runtime_level() -> void:
+	_reset_launch_touch()
 	active_balls = 0
 	phase_timer = 0.0
 	paddle.reset_effects()
@@ -178,9 +246,12 @@ func _spawn_ball(attached: bool, custom_direction := Vector2.ZERO) -> void:
 	if not attached: ball.global_position = paddle.global_position + Vector2(0, -80); ball.launch(custom_direction)
 	active_balls += 1
 	_sync_launched_ball_count()
+	_refresh_launch_prompt()
 
 func _on_ball_launched(_ball: EnergyBall) -> void:
 	_sync_launched_ball_count()
+	_reset_launch_touch()
+	_refresh_launch_prompt()
 
 func _on_ball_fell(ball: EnergyBall) -> void:
 	active_balls -= 1
@@ -295,17 +366,24 @@ func _disconnect_global_signals() -> void:
 			event.disconnect(callback)
 
 func _show_win(_score: int) -> void:
+	_reset_launch_touch()
+	$HUD/LaunchPrompt.visible = false
 	get_tree().paused = true
 	_show_overlay($HUD/WinPanel)
 func _show_loss(_score: int) -> void:
+	_reset_launch_touch()
+	$HUD/LaunchPrompt.visible = false
 	get_tree().paused = true
 	_show_overlay($HUD/LosePanel)
 func _on_pause_pressed() -> void:
+	_reset_launch_touch()
+	$HUD/LaunchPrompt.visible = false
 	get_tree().paused = true
 	_show_overlay($HUD/PausePanel)
 func _on_resume_pressed() -> void:
 	await _hide_overlay($HUD/PausePanel)
 	get_tree().paused = false
+	_refresh_launch_prompt()
 
 func _show_overlay(panel: Control) -> void:
 	panel.visible = true
