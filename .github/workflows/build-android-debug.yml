@@ -16,7 +16,7 @@ jobs:
       GODOT_RELEASE: 4.7.1-stable
       GODOT_TEMPLATES_DIR: 4.7.1.stable
       APK_PATH: build/FutureBreaker-debug.apk
-      GODOT_SETTINGS_DIR: ${{ runner.temp }}/godot-settings
+      GODOT_SETTINGS_DIR: /tmp/godot-settings
 
     steps:
       - name: Checkout project
