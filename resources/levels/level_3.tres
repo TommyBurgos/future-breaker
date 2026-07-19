@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3]
+
+[ext_resource path="res://scripts/data/level_data.gd" type="Script" id="1"]
+
+[resource]
+script = ExtResource("1")
+level_number = 3
+title = "Matriz ascendente"
+ball_speed = 900.0
+rows = Array[String](["21222212", "22122122", "11222211", "22111122", "01222210", "00122100"])

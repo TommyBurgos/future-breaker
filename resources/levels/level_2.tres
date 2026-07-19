@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3]
+
+[ext_resource path="res://scripts/data/level_data.gd" type="Script" id="1"]
+
+[resource]
+script = ExtResource("1")
+level_number = 2
+title = "Pulso violeta"
+ball_speed = 830.0
+rows = Array[String](["12222221", "21011012", "01222210", "00122100", "00011000"])

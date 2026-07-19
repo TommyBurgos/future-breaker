@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3]
+
+[ext_resource path="res://scripts/data/level_data.gd" type="Script" id="1"]
+
+[resource]
+script = ExtResource("1")
+level_number = 8
+title = "Órbita fracturada"
+ball_speed = 1150.0
+rows = Array[String](["13222231", "22111122", "21322312", "12222221", "21113112", "12200221", "22122122", "01122110"])

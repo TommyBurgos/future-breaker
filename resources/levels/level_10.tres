@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3]
+
+[ext_resource path="res://scripts/data/level_data.gd" type="Script" id="1"]
+
+[resource]
+script = ExtResource("1")
+level_number = 10
+title = "Nexo terminal"
+ball_speed = 1250.0
+rows = Array[String](["32111223", "21322312", "12233221", "22111122", "11222211", "22011022", "12222221", "21122112", "01211210"])

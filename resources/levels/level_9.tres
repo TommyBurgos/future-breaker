@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3]
+
+[ext_resource path="res://scripts/data/level_data.gd" type="Script" id="1"]
+
+[resource]
+script = ExtResource("1")
+level_number = 9
+title = "Cerco de singularidad"
+ball_speed = 1200.0
+rows = Array[String](["31222213", "22311322", "12222221", "21300312", "22122122", "11222211", "22111122", "01222210"])
