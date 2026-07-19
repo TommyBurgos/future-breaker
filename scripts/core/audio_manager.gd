@@ -4,12 +4,12 @@ const MENU_TRACK := &"menu"
 const LEVELS_1_TO_5_TRACK := &"levels_1_5"
 const LEVELS_6_TO_10_TRACK := &"levels_6_10"
 const LEVELS_11_PLUS_TRACK := &"levels_11_plus"
-const MENU_STREAM: AudioStream = preload("res://assets/audio/music/space.mp3")
-const LEVELS_1_TO_5_STREAM: AudioStream = preload("res://assets/audio/music/TallGrass.mp3")
-const LEVELS_6_TO_10_STREAM: AudioStream = preload("res://assets/audio/music/TallGrass2.mp3")
-const LEVELS_11_PLUS_STREAM: AudioStream = preload("res://assets/audio/music/cyberpunk-gaming.mp3")
-const BRICK_HIT_STREAM: AudioStream = preload("res://assets/audio/sfx/brick_hit.wav")
-const INDESTRUCTIBLE_HIT_STREAM: AudioStream = preload("res://assets/audio/sfx/indestructible_hit.wav")
+var MENU_STREAM: AudioStream
+var LEVELS_1_TO_5_STREAM: AudioStream
+var LEVELS_6_TO_10_STREAM: AudioStream
+var LEVELS_11_PLUS_STREAM: AudioStream
+var BRICK_HIT_STREAM: AudioStream
+var INDESTRUCTIBLE_HIT_STREAM: AudioStream
 const FADE_OUT_SECONDS := 0.32
 const FADE_IN_SECONDS := 0.48
 const SILENT_DB := -45.0
@@ -27,6 +27,12 @@ var sfx_players: Array[AudioStreamPlayer] = []
 var last_sfx_started_ms: Dictionary = {}
 
 func _ready() -> void:
+	MENU_STREAM = load("res://assets/audio/music/space.mp3")
+	LEVELS_1_TO_5_STREAM = load("res://assets/audio/music/TallGrass.mp3")
+	LEVELS_6_TO_10_STREAM = load("res://assets/audio/music/TallGrass2.mp3")
+	LEVELS_11_PLUS_STREAM = load("res://assets/audio/music/cyberpunk-gaming.mp3")
+	BRICK_HIT_STREAM = load("res://assets/audio/sfx/brick_hit.wav")
+	INDESTRUCTIBLE_HIT_STREAM = load("res://assets/audio/sfx/indestructible_hit.wav")	
 	_ensure_audio_buses()
 	_configure_music_streams()
 	music_player = AudioStreamPlayer.new()
